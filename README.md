@@ -1,4 +1,4 @@
-xelent
+xen
 ======
 
 Simple and sane Java XML implementation using Collections, Generics and Varargs, inspired by Groovy's XML handling.
