@@ -15,6 +15,8 @@ This package is an attempt to rewrite XML structures as they "should be written 
 that hopefully make sense to 90% of users and match up with much of the Groovy capabilities.  If the simplifications don't make sense for you, don't use this module!
 It's interesting that my design came out pretty close to Groovy's.  (I then moved even closer to their design).
 
+[JavaDocs are here](http://morganconrad.github.io/xen/javadocs/)
+
 ####General Design - similar to a [Groovy Node](http://groovy.codehaus.org/api/groovy/util/Node.html).
 
  1. All text associated with a node is grouped into a single String.  There are no org.w3c.dom.Text Nodes.
@@ -47,7 +49,7 @@ This class implements an "XPath-like" search syntax.
  3. ..  move up to parent Xen.
  4. x   select all children named x
  5. *   select all children
- 6. @x  select attribute names x (only allowed at the end)
+ 6. @x  select attributes named x (only allowed at the end)
  7. // is _not supported_.  All children must be direct descendants.
 
  ###Predicates supported (all as-per w3c with one addition)
@@ -62,15 +64,15 @@ In general, if you replace the "." with "/", and add a method call, many things 
 **Important**  Unlike Groovy, Xen follows W3C XPath indexing, which is 1-based.  The first element is \[1\], *not* \[0\].
 
     records.car.make[2].@model.text();               // Groovy
-    records.elementXP("car/make[2]/@model").text();  // Xen  or
-    records.attributeXP("car/make[2]/@model");
+    records.elementXP("car/make[3]/@model").text();  // Xen  note 1-based indexing!
+    records.attributeXP("car/make[3]/@model");
 
-Note:  For more Groovy compatibility, Xen also has a `depthFirst()` and `breadthFirst()` which return List<Xen>.
+Note:  For more Groovy compatibility, Xen also has a `depthFirst()` and `breadthFirst()` which return a `List<Xen>`.
 
 Converters - convert to or from an Xen
 -----
 
-#### GXmlParser
+#### GXmlParser inspired by groovy.util.XmlParser
 
 An implementation of a org.xml.sax.ext.DefaultHandler2 that creates a tree of Xens using a SAXParser.  _e.g._
 
@@ -80,7 +82,7 @@ An implementation of a org.xml.sax.ext.DefaultHandler2 that creates a tree of Xe
     GXmlParser gxmlParser = new  GXmlParser(saxParser);
     Xen root = gxmlParser.parse(someKindOfInput);
     
-or, more simply, Groovy Style.
+or, more simply, accept the defaults and go Groovy Style.
     
     Xen root = new GXmlParser().parse(someKindOfInput);
     
@@ -100,7 +102,7 @@ Often you can simplify the last two lines with
 
 #### Converter.ToDocument
 
-Converts the Xen (usually the root but not necessarily) into a Document.  You must provide a blank Document of your preferred type, _e.g._
+Converts the Xen (usually the root but not necessarily) into a org.w3c.dom.Document.  You must provide a blank Document of your preferred type, _e.g._
 
     Converter.ToDocument converter = new Converter.ToDocument(someDocumentBuilder.newDocument());   // or new CoreDocumentImpl()
     doc = converter.convert(xelent);
