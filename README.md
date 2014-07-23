@@ -36,7 +36,11 @@ It's interesting that my design came out pretty close to Groovy's.  (I then move
 ###Navigation API
 
  1. A Xen object supports basic navigation via `children(String), parent(), and getRootElement().`
- 2. It also supports a convenience API for "XPath-like" search: `attributeXP(), attributesXP(), elementXP(), elementsXP().` 
+ 2. It also supports a convenience API for "XPath-like" search: `get(), one(), and all(), getText(), getAttr(), allAttr().`
+ 
+    - get...() returns a single match, throwing a DOMException if there were multiple matches, or null if there were none
+    - one()    is like get...(), except it throws a DOMException if none were found
+    - all...() returns a list of matches, possibly empty
  3. You can also explicitly create an Xpath to do searching from an Xen.   Details below.
 
 ###Xpath
@@ -64,8 +68,8 @@ In general, if you replace the "." with "/", and add a method call, many things 
 **Important**  Unlike Groovy, Xen follows W3C XPath indexing, which is 1-based.  The first element is \[1\], *not* \[0\].
 
     records.car.make[2].@model.text();               // Groovy
-    records.elementXP("car/make[3]/@model").text();  // Xen  note 1-based indexing!
-    records.attributeXP("car/make[3]/@model");
+    records.get("car/make[3]/@model").text();  // Xen  note 1-based indexing!
+    records.getAttr("car/make[3]/@model");
 
 Note:  For more Groovy compatibility, Xen also has a `depthFirst()` and `breadthFirst()` which return a `List<Xen>`.
 

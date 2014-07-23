@@ -56,26 +56,26 @@ public class XenTest extends TestCase {
       System.out.println(s);
 
       assertEquals("dongle", root.name());
-      s = root.textXP("id");
+      s = root.getText("id");
       assertEquals("DONGLE_01", s);
-      Xen customer = root.elementXP("m:customer");
-      s = customer.textXP("/id");
+      Xen customer = root.get("m:customer");
+      s = customer.getText("/id");
       assertEquals("DONGLE_01", s);
       assertEquals("m:customer", customer.name());
  //     assertEquals("customer", customer.getLocalName());
  //     assertEquals("m", customer.getPrefix());
-      s = customer.textXP("/m:customer/name");
+      s = customer.getText("/m:customer/name");
       assertEquals("Boomer Institute", s);
-      s = customer.textXP(".././id");
+      s = customer.getText(".././id");
       assertEquals("DONGLE_01", s);
-      s = customer.attributeXP("someattr");
+      s = customer.getAttr("someattr");
       assertEquals("ddd", s);
 
-      s = customer.textXP();
+      s = customer.text();
       assertEquals("<sender>John Smith</sender>", s);
 
       //  customer.setText("CUSTOMERTEXT");
-      // assertEquals("CUSTOMERTEXT", customer.textXP());
+      // assertEquals("CUSTOMERTEXT", customer.getText());
 
       customer.putAttributes("foo", "bar");
       assertTrue(customer.attributes().containsKey("foo"));
@@ -84,45 +84,40 @@ public class XenTest extends TestCase {
 
       assertEquals(7, customer.children(Xpath.WILDCARD).size());
 
+      assertNull(root.getText("customer/not there"));
+
       try {
-         root.textXP("customer/not there");
-         fail();
-      }
-      catch (DOMException de) {
-         assertEquals("No elementsXP found for <customer/not there>", de.getMessage());   // forgot the m:
-      }
-      try {
-         customer.elementXP("email");
+         customer.get("email");
          fail();
       }
       catch (DOMException dome) {
          assertEquals("Multiple Elements found for <email>", dome.getMessage());
       }
       try {
-         customer.attributeXP("email", "@addr");
+         customer.getAttr("email", "@addr");
          fail();
       }
       catch (DOMException dome) {
          assertEquals("Multiple Elements found for <email/@addr>", dome.getMessage());
       }
 
-      assertEquals("address1", customer.attributeXP("email[1]", "@addr"));
-      assertEquals("address2", customer.attributeXP("email[0]", "@addr"));
-      assertEquals("[address1, address2]", customer.attributesXP("email", "@addr").toString());
-      assertEquals("<id>CUSTOMER_03<\\id>", customer.elementXP("id").toString());
-      assertEquals("bar", root.attributeXP("m:customer", "@foo"));
+      assertEquals("address1", customer.getAttr("email[1]", "@addr"));
+      assertEquals("address2", customer.getAttr("email[0]", "@addr"));
+      assertEquals("[address1, address2]", customer.allAttr("email", "@addr").toString());
+      assertEquals("<id>CUSTOMER_03<\\id>", customer.get("id").toString());
+      assertEquals("bar", root.getAttr("m:customer", "@foo"));
       customer.attributes().remove("foo");
       assertFalse(customer.attributes().containsKey("foo"));
       assertEquals("/m:customer", customer.getAbsolutePath());
 
       assertEquals(2, customer.children("email").size());
 
-      assertEquals(1, root.elementsXP("m:customer[@someattr]").size());
-      assertEquals(1, root.elementsXP("m:customer[@someattr='ddd']").size());
-      assertEquals(0, root.elementsXP("m:customer[@someattrnotthere]").size());
-      assertEquals(0, root.elementsXP("m:customer[@someattr='xxx']").size());
-      assertEquals(0, root.attributesXP("m:customer/@someattrnotthere").size());
-      assertEquals("ddd", root.attributeXP("m:customer/@someattr") );
+      assertEquals(1, root.all("m:customer[@someattr]").size());
+      assertEquals(1, root.all("m:customer[@someattr='ddd']").size());
+      assertEquals(0, root.all("m:customer[@someattrnotthere]").size());
+      assertEquals(0, root.all("m:customer[@someattr='xxx']").size());
+      assertEquals(0, root.allAttr("m:customer/@someattrnotthere").size());
+      assertEquals("ddd", root.getAttr("m:customer/@someattr") );
       Converter.ToDocument converter = new Converter.ToDocument(new CoreDocumentImpl());
       Document outDoc = converter.convert(root);
       assertNotNull(outDoc);

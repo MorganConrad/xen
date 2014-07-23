@@ -18,7 +18,7 @@ import org.xml.sax.Attributes;
  * <li> child Elements (other Xen) are kept in a List&lt;Xen&gt;
  * </ul>
  *
- * If using namespaces, the name of an elementXP is <i>always</i> <i>qualified</i> name.  The URI is forgotten.
+ * If using namespaces, the name of a Xen is <i>always</i> <i>qualified</i> name.  The URI is forgotten.
  * e.g.  &lt;w:border&gt;  &lt;w:border/&gt; has a name of "w:border".
  *
  * There are no Comments, EntityReferences, etc. etc.  If you need these don't use Xen.
@@ -30,7 +30,7 @@ import org.xml.sax.Attributes;
  *  Note that this XPath-like syntax is <i>very similar</i> to <a href="http://groovy.codehaus.org/api/groovy/util/XmlSlurper.html">Groovy's XMLSlurper</a> syntax if you replace "." with a "/".  e.g.
  *  <br>
  *  Where Groovy might use    <code>root.records.car[0].@make   </code><br>
- *        Xen would use       <code>root.attributeXP("records/car[1]/@make"); //   note 1 based offset</code>
+ *        Xen would use       <code>root.getAttr("records/car[1]/@make"); //   note 1 based offset</code>
  *
  *
  * @author Morgan Conrad
@@ -90,7 +90,7 @@ public class Xen {
    /**
     * Use this instead of Node.getOwnerDocument().getDocumentElement()
     *
-    * @return root elementXP (should never be null)
+    * @return root element (should never be null)
     */
    public Xen getRootElement() {
       if (parent != null)
@@ -152,6 +152,12 @@ public class Xen {
    }
 
 
+   /**
+    * Direct access to all of our children, allocating a new List if needed.
+    * Outside callers should use this sparingly and carefully.
+    *
+    * @return modifiable List
+    */
    public synchronized List<Xen> children() {
       if (children == NO_CHILDREN)
          children = new ArrayList<Xen>();
@@ -162,8 +168,8 @@ public class Xen {
 
 
    /**
-    * Get text from this Xen.  Text is always "normalized" (combined into one single String
-    * A loose replacement for org.w3c.dom.Node.getTextContent() and groovy.util.Node.text(), but DOES NOT INCLUDE text from children
+    * Get text from this Xen.  Text is always "normalized" (combined into one single String)
+    * A loose replacement for org.w3c.dom.Node.getTextContent() and groovy.util.Node.text(), but DOES NOT INCLUDE getText from children
     *
     * @return never-null, may be empty
     */
@@ -189,19 +195,27 @@ public class Xen {
    }
 
    /**
-    * Get text from another Xen along an Xpath
+    * Get text from another (single) Xen along an Xpath
     *
-    * @param xpath XPath-like
+    * @param path XPath-like
     * @return null if that Xen does not exist
+    * @throws DOMException if there are multiple matches
     */
-   public String textXP(String... xpath) {
-      Xen m = elementXP(xpath);
-      return m != null ? m.text : null;
+   public String getText(String... path) {
+      if (path.length == 0)
+         return this.text;
+
+      Xpath xpath = new Xpath(path);
+      List<Xen> matches = xpath.evaluate(this);
+      if (matches.size() == 0)
+         return null;
+
+      return xpath.thereCanBeOnlyOne(matches).text();
    }
 
 
    /**
-    * Set text for this elementXP.  Text is always "normalized" (combined into one single String
+    * Set text for this element.  Text is always "normalized" (combined into one single String)
     * A loose replacement for org.w3c.dom.Node.setTextContent(), but DOES NOT AFFECT children
     *
     * @return this
@@ -216,7 +230,7 @@ public class Xen {
    /**
     * Use like org.w3c.dom.Element.getAttribute() and groovy.util.Node.attribute()
     * @param name of the attribute
-    * @return never null
+    * @return never null, will be "" if none exists
     */
    public String attribute(String name) {
       String s = attrs.get(name);
@@ -236,7 +250,7 @@ public class Xen {
    /**
     * Puts (adds or replaces) attributes
     * Use instead of groovy.util.Node.setAttribute(name, value), but allows varargs to support multiple additions
-    * @param pairs  0,2,4... name/value pairs, must be an even number
+    * @param pairs  name/value pairs, must be an even number
     * @return this
     */
    public Xen putAttributes(Object... pairs) {
@@ -255,8 +269,8 @@ public class Xen {
 
 
    /**
-    * Clears any old attributesXP and sets them
-    * @param inAttrs
+    * Clears any old attributes and sets them
+    * @param inAttrs may be null
     * @return this
     */
    public Xen setAttributes(Attributes inAttrs) {
@@ -279,12 +293,12 @@ public class Xen {
 
 
    /**
-    * Finds attributes along an XPath-like path
+    * Finds all attributes along an XPath-like path, returning values as Strings
     *
     * @param path XPath-like, last part should start with '@'
-    * @return empty list if none found
+    * @return never null, empty list if none found
     */
-   public List<String> attributesXP(String... path) {
+   public List<String> allAttr(String... path) {
       Xpath xpath = new Xpath(path);
       xpath.makeSureLastIsAttribute();
 
@@ -299,16 +313,17 @@ public class Xen {
 
    /**
     * Finds a single attribute along an XPath-like path
+    *
     * @param path  XPath-like, last part should start with '@'
     * @return null if none found
     * @throws DOMException if multiple matches
     */
-   public String attributeXP(String... path) throws DOMException {
+   public String getAttr(String... path) throws DOMException {
       Xpath xpath = new Xpath(path);
       xpath.makeSureLastIsAttribute();
       List<Xen> matches = xpath.evaluate(this);
 
-      if (matches.isEmpty())
+      if (matches.size() == 0)
          return null;
       return xpath.thereCanBeOnlyOne(matches).text;
    }
@@ -316,7 +331,8 @@ public class Xen {
 
 
    /**
-    * Return all the Attributes as a modifiable Map.  Use to implement other functionality in Node.  For example
+    * Direct access to all the Attributes as a modifiable Map.
+    * Use with care to implement other functionality in Node.  For example
     * <pre>
     *     void Node.removeAttribute(String name) { attributes().remove(name); }
     * </pre>
@@ -387,30 +403,49 @@ public class Xen {
 
 
    /**
-    * Find elements matching the XPath-like search criteria
+    * Find all elements matching the XPath-like search criteria
     * @param xpaths  XPath-like
     * @return never null, may be empty
     */
-   public List<Xen> elementsXP(String... xpaths) {
+   public List<Xen> all(String... xpaths) {
       Xpath xpath = new Xpath(xpaths);
       return xpath.evaluate(this);
    }
 
 
    /**
-    * Finds a single "Element" matching the XPath-like search criteria
+    * Get a single "Element" matching the XPath-like search criteria
     *
     * @param path  XPath-like
-    * @return Xen
-    * @throws DOMException if 0 or many are found
+    * @return Xen, null if none were found
+    * @throws DOMException if many were found
     */
-   public Xen elementXP(String... path) throws DOMException {
+   public Xen get(String... path) throws DOMException {
       if (path.length == 0)
          return this;
 
       Xpath xpath = new Xpath(path);
-      List<Xen> list = xpath.evaluate(this);
-      return xpath.thereCanBeOnlyOne(list);
+      List<Xen> matches = xpath.evaluate(this);
+      if (matches.size() == 0)
+         return null;
+      return xpath.thereCanBeOnlyOne(matches);
+   }
+
+
+   /**
+    * Get a single REQUIRED "Element" matching the XPath-like search criteria
+    * Unlike get(), this will throw a DOMException instead of returning null if none were found
+    * @param path  XPath-like
+    * @return never-null
+    * @throws DOMException if 0 or many were found
+    */
+   public Xen one(String... path) throws DOMException {
+      if (path.length == 0)
+         return this;
+
+      Xpath xpath = new Xpath(path);
+      List<Xen> matches = xpath.evaluate(this);
+      return xpath.thereCanBeOnlyOne(matches);
    }
 
    /**
@@ -485,7 +520,7 @@ public class Xen {
    }
 
 
-   // trims whitespace from ends of text (usually what you want)
+   // trims whitespace from ends of our text (usually what you want)
    protected Xen trimText(boolean doit) {
       if (doit)
          this.text = text.trim();

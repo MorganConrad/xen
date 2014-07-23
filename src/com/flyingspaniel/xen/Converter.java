@@ -39,7 +39,7 @@ public interface Converter<FROM, TO> {
 
       /**
        * Builds a tree of Xens from an org.w3c.dom.Element.
-       * @param e        elementXP
+       * @param e        Element
        * @param parent   of the new Element
        * @return  new Xen
        */
@@ -89,13 +89,13 @@ public interface Converter<FROM, TO> {
 
 
       /**
-       * Exports this elementXP (which should generally not be root) to an elementXP
+       * Exports this get (which should generally not be root) to an Element
        * @return newly created Element
        */
       public Element toElement(Xen xen) {
 
          Element element = document.createElement(xen.name());
-         element.setTextContent(xen.textXP());  // do before we add children
+         element.setTextContent(xen.text());  // do before we add children
 
          for (Map.Entry<String,String> attr : xen.attrs.entrySet())
             element.setAttribute(attr.getKey(), attr.getValue());

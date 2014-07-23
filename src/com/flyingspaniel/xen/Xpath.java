@@ -15,7 +15,7 @@ import java.util.List;
  *    ..  move up to parent node
  *    x   selects all children named x
  *    *   selects all children
- *    &#64;x  only allowed at the end, selects the attributeXP named x
+ *    &#64;x  only allowed at the end, selects the attribute named x
  *    //  is NOT supported.
  *
  * </pre>
@@ -28,8 +28,8 @@ import java.util.List;
  *    </ul>
  *    <li>[@a] or [@a='val'] work as per W3C.
  *    <ul>
- *       <li>ename[@aname] selects all elementsXP named ename with an attributeXP aname
- *       <li>ename[@aname='avalue'] selects all elementsXP named ename with an attributeXP aname equal to avalue
+ *       <li>ename[@aname] selects all elements named ename with an attribute named aname
+ *       <li>ename[@aname='avalue'] selects all elements named ename with an attribute named aname equal to avalue
  *    </ul>
  *     </ul>
  *  <b>Note:</b> Does NOT support //  i.e., all nodes must be <b>direct</b> descendants
@@ -37,7 +37,7 @@ import java.util.List;
  *  Note that this XPath-like syntax is <i>very similar</i> to <a href="http://groovy.codehaus.org/api/groovy/util/XmlSlurper.html">Groovy's XMLSlurper</a> syntax if you replace "." with a "/".  e.g.
  *  <br>
  *  Where Groovy might use    <code>root.records.car[0].@make   </code><br>
- *        Xen would use      <code>root.attributeXP("records/car[1]/@make"); //   note 1 based offset</code>
+ *        Xen would use      <code>root.getAttr("records/car[1]/@make"); //   note 1 based offset</code>
  *
  * @author Morgan Conrad
  * @see <a href="http://opensource.org/licenses/MIT">This software is released under the MIT License</a>
@@ -60,6 +60,11 @@ public class Xpath {
    private final String[] pathSegments;
    private final String[] predicates;
 
+
+   /**
+    * Constructor
+    * @param path  individual Strings may include /
+    */
    public Xpath(String... path) {
       pathString = resolvePath(path);
 
@@ -69,15 +74,21 @@ public class Xpath {
    }
 
 
-   public List<Xen> evaluate(Xen xen, int start) {
+   /**
+    * Return a list of Xens matching the criteria
+    * @param xen        start point
+    * @param startIdx   within our path, mainly used when when recurring.
+    * @return never-null, may be empty
+    */
+   public List<Xen> evaluate(Xen xen, int startIdx) {
       List<Xen> matches = new ArrayList<Xen>();
 
-      if (pathSegments.length <= start) {
+      if (pathSegments.length <= startIdx) {
          matches.add(xen);
          return matches;
       }
 
-      for (int i = start; i < pathSegments.length && (xen != null); i++) {
+      for (int i = startIdx; i < pathSegments.length && (xen != null); i++) {
          String segment = pathSegments[i];
 
          if (PARENT.equals(segment))     // up one
@@ -91,13 +102,13 @@ public class Xpath {
                throw new UnsupportedOperationException(pathString); // TODO
             } else {
                String name = segment.substring(1);
-               // create a fakey little "elementXP" node...  name will start with "@" for clarity
+               // create a fakey little "attribute" element...  name will start with "@" for clarity
                if (xen.hasAttribute(name))
                   xen = new Xen(segment, xen, xen.attribute(name));
                else
                   xen = null;
             }
-            break; // attributesXP are the end of the line
+            break; // Attributes are the end of the line
          } else {
             List<Xen> childList = xen.children(segment);
             xen = null;  // never add
@@ -125,6 +136,11 @@ public class Xpath {
    }
 
 
+   /**
+    * Return a list of Xens matching the criteria
+    * @param xen  start point
+    * @return never-null, may be empty
+    */
    public List<Xen> evaluate(Xen xen) {
       return evaluate(xen, 0);
    }
@@ -157,6 +173,11 @@ public class Xpath {
       return outList;
    }
 
+
+   /**
+    * Polite Utility when you know they want an attribute.  Could throw an exception instead???
+    * @return  true if it was already correct
+    */
    public boolean makeSureLastIsAttribute() {
       String last = pathSegments[pathSegments.length - 1];
       if (last.startsWith(ATTRIBUTE))
@@ -168,6 +189,11 @@ public class Xpath {
    }
 
 
+   /**
+    * Combines path array, which may include "/", into a single String
+    * @param xpaths
+    * @return  non-null
+    */
    public String resolvePath(String... xpaths) {
       if (xpaths == null || xpaths.length == 0)   // check for trivial case
          return "";
@@ -186,9 +212,15 @@ public class Xpath {
    }
 
 
-   public Xen thereCanBeOnlyOne(List<Xen> list) {
+   /**
+    * Utility to use after a search if you expect a single result
+    * @param list   result of an evaluate
+    * @return first in list
+    * @throws DOMException if there were 0 or > 1
+    */
+   public Xen thereCanBeOnlyOne(List<Xen> list) throws DOMException {
       if (list.isEmpty())
-         throw new DOMException(DOMException.NOT_FOUND_ERR, "No elementsXP found for <" + pathString + ">");
+         throw new DOMException(DOMException.NOT_FOUND_ERR, "No Elements found for <" + pathString + ">");
       if (list.size() > 1)
          throw new DOMException(DOMException.TYPE_MISMATCH_ERR, "Multiple Elements found for <" + pathString + ">");
 
