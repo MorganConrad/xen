@@ -22,7 +22,7 @@ import org.xml.sax.Attributes;
  * e.g.  &lt;w:border&gt;  &lt;w:border/&gt; has a name of "w:border".
  *
  * There are no Comments, EntityReferences, etc. etc.  If you need these don't use Xen.
- * However, all Xens have a field props, which is a Map<String, Object>, which might be useful for small additions.
+ * However, all Xens have a field userProperties, which is a Map<String, Object>, which might be useful for small additions.
  *
  * <p>
  * Combined with Xpath, Xen allows for <a href="http://www.w3schools.com/xpath/xpath_syntax.asp">"XPath-like"</a> selection and movement.
@@ -49,12 +49,13 @@ public class Xen {
 
 
    public final String name;
+   protected final boolean isAttrMock;
    protected String text;
    protected Xen parent;
 
    protected volatile Map<String, String> attrs;
    protected volatile List<Xen> children;
-   protected volatile Map<String, Object> props;
+   protected volatile Map<String, Object> userProperties;
 
 
    /**
@@ -68,8 +69,9 @@ public class Xen {
       this.parent = parent;
       attrs = NO_ATTRS;
       children = NO_CHILDREN;
-      props = NO_PROPS;
+      userProperties = NO_PROPS;
       this.text = text != null ? text : "";
+      isAttrMock = name.startsWith(Xpath.ATTRIBUTE);
    }
 
    public Xen(String name, Xen parent) {
@@ -92,9 +94,9 @@ public class Xen {
     *
     * @return root element (should never be null)
     */
-   public Xen getRootElement() {
+   public Xen rootElement() {
       if (parent != null)
-         return parent.getRootElement();
+         return parent.rootElement();
 
       return this;
    }
@@ -119,11 +121,11 @@ public class Xen {
     * Access a modifiable HashMap of general purpose properties for this Element
     * @return never null
     */
-   public synchronized Map<String,Object> getProperties() {
-      if (props == NO_PROPS)
-         props = new HashMap<String,Object>();
+   public synchronized Map<String,Object> userProperties() {
+      if ((userProperties == NO_PROPS) && notAttrMock())
+         userProperties = new HashMap<String, Object>();
 
-      return props;
+      return userProperties;
    }
 
 
@@ -132,11 +134,11 @@ public class Xen {
     * @param name of the property
     * @return may be null if none found
     */
-   public synchronized Object getProperty(String name) {
-      if (props.containsKey(name))
-         return props.get(name);
+   public synchronized Object userProperty(String name) {
+      if (userProperties.containsKey(name))
+         return userProperties.get(name);
       else if (parent != null)
-         return parent.getProperty(name);
+         return parent.userProperty(name);
       else
          return null;
    }
@@ -147,8 +149,8 @@ public class Xen {
     * @param value of the property
     * @return  previous value
     */
-   public Object setProperty(String name, Object value) {
-        return getProperties().put(name, value);
+   public Object setUserProperty(String name, Object value) {
+        return userProperties().put(name, value);
    }
 
 
@@ -159,7 +161,7 @@ public class Xen {
     * @return modifiable List
     */
    public synchronized List<Xen> children() {
-      if (children == NO_CHILDREN)
+      if ( (children == NO_CHILDREN) && notAttrMock())
          children = new ArrayList<Xen>();
 
       return children;
@@ -193,6 +195,8 @@ public class Xen {
 
       return sb.toString();
    }
+
+
 
    /**
     * Get text from another (single) Xen along an Xpath
@@ -293,14 +297,13 @@ public class Xen {
 
 
    /**
-    * Finds all attributes along an XPath-like path, returning values as Strings
+    * Finds all elements along an XPath-like path, returning values as Strings
     *
     * @param path XPath-like, last part should start with '@'
     * @return never null, empty list if none found
     */
-   public List<String> allAttr(String... path) {
+   public List<String> allText(String... path) {
       Xpath xpath = new Xpath(path);
-      xpath.makeSureLastIsAttribute();
 
       List<Xen> matches = xpath.evaluate(this);
       List<String> attributes = new ArrayList<String>(matches.size());
@@ -312,25 +315,6 @@ public class Xen {
 
 
    /**
-    * Finds a single attribute along an XPath-like path
-    *
-    * @param path  XPath-like, last part should start with '@'
-    * @return null if none found
-    * @throws DOMException if multiple matches
-    */
-   public String getAttr(String... path) throws DOMException {
-      Xpath xpath = new Xpath(path);
-      xpath.makeSureLastIsAttribute();
-      List<Xen> matches = xpath.evaluate(this);
-
-      if (matches.size() == 0)
-         return null;
-      return xpath.thereCanBeOnlyOne(matches).text;
-   }
-
-
-
-   /**
     * Direct access to all the Attributes as a modifiable Map.
     * Use with care to implement other functionality in Node.  For example
     * <pre>
@@ -339,7 +323,7 @@ public class Xen {
      * @return  Map<String, String>
     */
    public synchronized Map<String, String> attributes() {
-      if (attrs == NO_ATTRS)
+      if ((attrs == NO_ATTRS ) && notAttrMock())
          attrs = new LinkedHashMap<String, String>();
 
       return attrs;
@@ -435,9 +419,9 @@ public class Xen {
    /**
     * Get a single REQUIRED "Element" matching the XPath-like search criteria
     * Unlike get(), this will throw a DOMException instead of returning null if none were found
-    * @param path  XPath-like
+    * @param path  XPath-like, if empty returns this
     * @return never-null
-    * @throws DOMException if 0 or many were found
+    * @throws DOMException if 0 or many matches were found
     */
    public Xen one(String... path) throws DOMException {
       if (path.length == 0)
@@ -448,15 +432,50 @@ public class Xen {
       return xpath.thereCanBeOnlyOne(matches);
    }
 
+
+   /**
+    * Get the text from a single REQUIRED element matching the XPath-like search criteria
+    * @param path  XPath-like, if empty returns this.text
+    * @return String never-null
+    * @throws DOMException if 0 or many matches were found
+    */
+   public String oneText(String... path) throws DOMException {
+      return one(path).text();
+   }
+
+
+   /**
+    * Get the text from a single required element and convert to a double
+    * @param path   XPath-like, often empty which means means "this"
+    * @return double
+    * @throws DOMException  if 0 or many matches were found
+    * @throws NumberFormatException if parsing fails
+    */
+   public double toDouble(String... path) throws DOMException, NumberFormatException {
+      return Double.parseDouble(one(path).text());
+   }
+
+   /**
+    * Get the text from a single required element and convert to a int
+    * @param path   XPath-like, often empty which means means "this"
+    * @return int
+    * @throws DOMException  if 0 or many matches were found
+    * @throws NumberFormatException if parsing fails
+    */
+   public int toInt(String... path) throws DOMException, NumberFormatException {
+      return Integer.parseInt(one(path).text());
+   }
+
    /**
     * Returns an XPath-like String that resolves to this node
+    * TODO  Does not include index if there are siblings of same name
     * @return String
     */
-   public String getAbsolutePath() {
+   public String absolutePath() {
       if (parent == null)
          return Xpath.ROOT;
 
-      String s = parent.getAbsolutePath();
+      String s = parent.absolutePath();
       if (s.length() > 1)
          s = s + Xpath.DELIM;
 
@@ -528,6 +547,11 @@ public class Xen {
    }
 
 
+    protected boolean notAttrMock() {
+       if (isAttrMock)
+          throw new IllegalStateException("Modifications disallowed on a temporary Attribute Node.");
 
+       return !isAttrMock;
+    }
 
 }

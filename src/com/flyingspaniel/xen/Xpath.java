@@ -8,7 +8,8 @@ import java.util.List;
 /**
  *
  *  Allows for <a href="http://www.w3schools.com/xpath/xpath_syntax.asp">"XPath-like"</a> selection and movement starting from an Xen.
- *  <b>Note:</b> there is an implied "." at the start of any path
+ *
+ * <h4>In general, it is treated as an XPath-style path</h4>
  * <pre>
  *    /   if at the start, move to the root node, else used as a delimiter
  *    .   move to current node (not very useful since there is an implied "." at the start of any path)
@@ -39,6 +40,15 @@ import java.util.List;
  *  Where Groovy might use    <code>root.records.car[0].@make   </code><br>
  *        Xen would use      <code>root.getAttr("records/car[1]/@make"); //   note 1 based offset</code>
  *
+ * <h4>However, if the path starts with a . followed by a letter, it is treated as a Groovy-style path</h4>
+ * Note that .x is not a legal XPath syntax...
+ * <pre>
+ *    .            is now the delimiter  (currently, '/' will also treated as a delimiter)
+ *    / . and ..   are not allowed in navigation.
+ *    indices are now 0-based.  You can still work backwards, but use -1 for the last.
+ * </pre>
+ *
+ *
  * @author Morgan Conrad
  * @see <a href="http://opensource.org/licenses/MIT">This software is released under the MIT License</a>
  * @since Copyright (c) 2014 by Morgan Conrad
@@ -60,10 +70,11 @@ public class Xpath {
    private final String[] pathSegments;
    private final String[] predicates;
 
+   protected int indexOrigin = 1;  // 0 = 0 based (Groovy style), 1 = 1 based (W3C XPath style) indices
 
    /**
     * Constructor
-    * @param path  individual Strings may include /
+    * @param path  individual Strings may include / or . delimiters.  Will get concatenated
     */
    public Xpath(String... path) {
       pathString = resolvePath(path);
@@ -96,7 +107,7 @@ public class Xpath {
          else if (CURRENT.equals(segment)) // same dir
             continue;
          else if (ROOT.equals(segment))
-            xen = xen.getRootElement();
+            xen = xen.rootElement();
          else if (segment.startsWith(ATTRIBUTE)) {
             if ("@*".equals(segment)) {
                throw new UnsupportedOperationException(pathString); // TODO
@@ -165,7 +176,7 @@ public class Xpath {
          }
       }
       else {
-         int idx = Integer.parseInt(predicate) - 1;  //  W3C XPath uses 1-based indexing
+         int idx = Integer.parseInt(predicate) - this.indexOrigin;  //  W3C XPath uses 1-based indexing
          Xen one = (idx >= 0) ? inList.get(idx) : inList.get(inList.size() + idx);
          outList.add(one);
       }
@@ -174,23 +185,9 @@ public class Xpath {
    }
 
 
-   /**
-    * Polite Utility when you know they want an attribute.  Could throw an exception instead???
-    * @return  true if it was already correct
-    */
-   public boolean makeSureLastIsAttribute() {
-      String last = pathSegments[pathSegments.length - 1];
-      if (last.startsWith(ATTRIBUTE))
-         return true;
-
-      // may eventually throw an exception...
-      pathSegments[pathSegments.length - 1] = ATTRIBUTE + last;
-      return false;
-   }
-
 
    /**
-    * Combines path array, which may include "/", into a single String
+    * Combines path array, which may include "/" or ".", into a single String
     * @param xpaths
     * @return  non-null
     */
@@ -208,7 +205,19 @@ public class Xpath {
          sb.append(path);
       }
 
-      return sb.toString();
+      String resolved = sb.toString();
+
+      // test if Groovy dot notation instead of XPath slash notation
+      if ((resolved.length() > 1) &&
+          (resolved.charAt(0) == '.') &&
+          Character.isLetter(resolved.charAt(1))) {
+
+         indexOrigin = 0;
+         resolved = resolved.substring(1);  // clear leading .
+         resolved = resolved.replaceAll("\\.", "/"); // convert to XPath syntax
+      }
+
+      return resolved;
    }
 
 

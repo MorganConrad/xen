@@ -19,7 +19,7 @@ import java.util.List;
 public class XenTest extends TestCase {
 
    static final String XML = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><dongle xmlns:m=\"myns\" >\n" +
-         "  <m:customer someattr=\"ddd\">\n" +
+         "  <m:customer someattr=\"123\">\n" +
          "    <id>CUSTOMER_03</id>\n" +
          "    <name>Boomer Institute</name>\n" +
          "    <m:address>Montara CA</m:address>\n" +
@@ -68,14 +68,11 @@ public class XenTest extends TestCase {
       assertEquals("Boomer Institute", s);
       s = customer.getText(".././id");
       assertEquals("DONGLE_01", s);
-      s = customer.getAttr("someattr");
-      assertEquals("ddd", s);
+      s = customer.attribute("someattr");
+      assertEquals("123", s);
 
       s = customer.text();
       assertEquals("<sender>John Smith</sender>", s);
-
-      //  customer.setText("CUSTOMERTEXT");
-      // assertEquals("CUSTOMERTEXT", customer.getText());
 
       customer.putAttributes("foo", "bar");
       assertTrue(customer.attributes().containsKey("foo"));
@@ -94,30 +91,49 @@ public class XenTest extends TestCase {
          assertEquals("Multiple Elements found for <email>", dome.getMessage());
       }
       try {
-         customer.getAttr("email", "@addr");
+         customer.one("email", "@addr");
          fail();
       }
       catch (DOMException dome) {
          assertEquals("Multiple Elements found for <email/@addr>", dome.getMessage());
       }
 
-      assertEquals("address1", customer.getAttr("email[1]", "@addr"));
-      assertEquals("address2", customer.getAttr("email[0]", "@addr"));
-      assertEquals("[address1, address2]", customer.allAttr("email", "@addr").toString());
+      assertEquals("address1", customer.getText("email[1]", "@addr"));
+      assertEquals("address2", customer.getText("email[0]", "@addr"));
+      assertEquals("[address1, address2]", customer.allText("email", "@addr").toString());
       assertEquals("<id>CUSTOMER_03<\\id>", customer.get("id").toString());
-      assertEquals("bar", root.getAttr("m:customer", "@foo"));
+      assertEquals("bar", root.getText("m:customer", "@foo"));
       customer.attributes().remove("foo");
       assertFalse(customer.attributes().containsKey("foo"));
-      assertEquals("/m:customer", customer.getAbsolutePath());
+      assertEquals("/m:customer", customer.absolutePath());
 
       assertEquals(2, customer.children("email").size());
 
       assertEquals(1, root.all("m:customer[@someattr]").size());
-      assertEquals(1, root.all("m:customer[@someattr='ddd']").size());
+      assertEquals(1, root.all("m:customer[@someattr='123']").size());
       assertEquals(0, root.all("m:customer[@someattrnotthere]").size());
       assertEquals(0, root.all("m:customer[@someattr='xxx']").size());
-      assertEquals(0, root.allAttr("m:customer/@someattrnotthere").size());
-      assertEquals("ddd", root.getAttr("m:customer/@someattr") );
+      assertEquals(0, root.allText("m:customer/@someattrnotthere").size());
+
+      Xen attrNode =  root.get("m:customer/@someattr");
+      assertEquals("123", attrNode.text() );
+      assertEquals(123.0, attrNode.toDouble() );
+      assertEquals(123, attrNode.toInt() );
+      try {
+         attrNode.setUserProperty("not", "modifiable");
+         fail();
+      }
+      catch (IllegalStateException ise) {
+         ;  // expected
+      }
+
+      // try dot notation vs. XPath
+      Xen zzz = root.get(".m:customer");
+      zzz = zzz.get(".email[0]");
+
+      assertEquals("address1", root.oneText(".m:customer.email[0].@addr"));
+      assertEquals("address1", root.oneText("/m:customer/email[1]/@addr"));
+
       Converter.ToDocument converter = new Converter.ToDocument(new CoreDocumentImpl());
       Document outDoc = converter.convert(root);
       assertNotNull(outDoc);
@@ -135,11 +151,11 @@ public class XenTest extends TestCase {
       List depth = root.depthFirst();
       assertEquals("<id>CUSTOMER_03<\\id>", depth.get(2).toString());
 
-      root.setProperty("foo1", "bar1");
-      root.setProperty("foo2", "bar2");
-      customer.setProperty("foo1", "barforcustomer");
-      assertEquals("barforcustomer", customer.getProperty("foo1"));
-      assertEquals("bar2", customer.getProperty("foo2"));
+      root.setUserProperty("foo1", "bar1");
+      root.setUserProperty("foo2", "bar2");
+      customer.setUserProperty("foo1", "barforcustomer");
+      assertEquals("barforcustomer", customer.userProperty("foo1"));
+      assertEquals("bar2", customer.userProperty("foo2"));
 
       assertEquals("<sender>John Smith</sender>DONGLE_01CUSTOMER_03Boomer InstituteMontara CA", root.text(true));
    }
