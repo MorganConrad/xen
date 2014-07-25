@@ -10,12 +10,26 @@ by using Collections, Generics, and Varargs, as well as numerous other Java synt
 For example, `Node.getChildNodes()` would likely return a `List<Node>`, and `Node.getAttributes()` would return a `Map`.
 
 Anybody who has used (or even just read about) Groovy's [XMLParser](http://groovy.codehaus.org/api/groovy/util/XmlParser.html) and associated classes knows how simple things _could be_.
+For example, _Making Java Groovy_ has example code with just a [few lines to parse Google Geocoder data.](https://github.com/kousen/Making-Java-Groovy/blob/6671f959c7ea9fc5e2522b4f85da1413ede71f20/ch02/groovybaseball/src/main/groovy/service/Geocoder.groovy)
 
 This package is an attempt to rewrite XML structures as they "should be written today", with some major simplifications
 that hopefully make sense to 90% of users and match up with much of the Groovy capabilities.  If the simplifications don't make sense for you, don't use this module!
 It's interesting that my design came out pretty close to Groovy's.  (I then moved even closer to their design).
 
 [JavaDocs are here](http://morganconrad.github.io/xen/javadocs/)
+
+This package is very new (v0.0.3), and may well contain bugs and design flaws.  The API is still subject to change.
+
+####Demo 
+This Example Mimics an Example from the book _Making Java Groovy_.
+
+    String url = BASE + URLEncoder.encode("24 Willy Mays Plaza San Francisco CA");
+    Xen response = new XenParser().parse(url);
+    double[] latLng = new double[2];
+    
+    // show a couple of options for getting at the data
+    latLng[0] = response.toDouble(".result[0].geometry.location.lat"); 
+    latLng[1] = response.one(".result[0].geometry.location.lng").toDouble();
 
 ####General Design - similar to a [Groovy Node](http://groovy.codehaus.org/api/groovy/util/Node.html).
 
@@ -36,7 +50,7 @@ It's interesting that my design came out pretty close to Groovy's.  (I then move
 ###Navigation API
 
  1. A Xen object supports basic navigation via `children(String), parent(), and getRootElement().`
- 2. It also supports a convenience API for "XPath-like" search: `get(), one(), and all(), getText(), getAttr(), allAttr().`
+ 2. It also supports a convenience API for "XPath-like" search: `get(), one(), and all(), getText(), oneText(), allText().`
  
     - get...() returns a single match, throwing a DOMException if there were multiple matches, or null if there were none
     - one()    is like get...(), except it throws a DOMException if none were found
@@ -57,19 +71,23 @@ This class implements an "XPath-like" search syntax.
  7. // is _not supported_.  All children must be direct descendants.
 
  ###Predicates supported (all as-per w3c with one addition)
- 1. [N] and [last()-N] work as per W3C.  _Note:_ the `last()` is optional.  e.g. [-2] is same as [last()-2]
+ 1. [N] and [last()-N] work as per W3C, with __1 based indexing__.  _Note:_ the `last()` is optional.  e.g. [-2] is same as [last()-2]
  2. [@a]  selects all elements having an attribute named a
  3. [@a='val'] selects all elements having an attribute a with value val.
 
+####If the path starts with a dot and a letter, it will be treated as a "Groovy Dot Style" path to access elements.
+You lose a few options ("/", ".", and ".." are not supported) but the notation matches what you'd type in Groovy, including __0 based indexing__.
 
 #### How does this compare to Groovy?
 
-In general, if you replace the "." with "/", and add a method call, many things convert.
-**Important**  Unlike Groovy, Xen follows W3C XPath indexing, which is 1-based.  The first element is \[1\], *not* \[0\].
+If you use "Groovy Dot Style", things are nearly identical.  You'll need to add a method call like get() or getText().
+If you use "W3C XPath Style " style, replace the "." with "/", and adjust  your indices by +1.
+**Important**  Unlike Groovy,W3C XPath indexing is 1-based.  The first element is \[1\], *not* \[0\].
 
-    records.car.make[2].@model.text();               // Groovy
-    records.get("car/make[3]/@model").text();  // Xen  note 1-based indexing!
-    records.getAttr("car/make[3]/@model");
+    records.car.make[2].@model.text();         // Groovy
+    records.get(".car.make[2].@model").text(); // Xen "Groovy style" with 0 based indexes
+    records.get("car/make[3]/@model").text();  // Xen "Xpath style", note 1-based indexing!
+    
 
 Note:  For more Groovy compatibility, Xen also has a `depthFirst()` and `breadthFirst()` which return a `List<Xen>`.
 

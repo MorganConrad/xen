@@ -176,6 +176,9 @@ public class Xpath {
          }
       }
       else {
+         predicate = predicate.replace("last()", "");
+         if (predicate.length() == 0)
+            predicate = "0";
          int idx = Integer.parseInt(predicate) - this.indexOrigin;  //  W3C XPath uses 1-based indexing
          Xen one = (idx >= 0) ? inList.get(idx) : inList.get(inList.size() + idx);
          outList.add(one);
