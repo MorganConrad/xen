@@ -64,13 +64,13 @@ public class Xpath {
    public static final String ATTRIBUTE = "@";
 
    static final String[] NO_PATH = new String[0];
-
+   static final XenPredicate[] NO_PREDICATES = new XenPredicate[0];
 
    private final String pathString;
    private final String[] pathSegments;
-   private final String[] predicates;
+   private final XenPredicate[] predicates;
 
-   protected int indexOrigin = 1;  // 0 = 0 based (Groovy style), 1 = 1 based (W3C XPath style) indices
+   protected boolean oneBasedIndices = true;   // 0 = 0 based (Groovy style), 1 = 1 based (W3C XPath style) indices
 
    /**
     * Constructor
@@ -78,10 +78,31 @@ public class Xpath {
     */
    public Xpath(String... path) {
       pathString = resolvePath(path);
+      if (pathString.length() == 0) {
+         pathSegments = NO_PATH;
+         predicates = NO_PREDICATES;
+      }
+      else {
+         String[] splits = pathString.split("/");
+         if ("".equals(splits[0]))
+            splits[0] = ROOT;
 
-      String[][] pnp = computePathsAndPredicates(pathString);
-      pathSegments = pnp[0];
-      predicates = pnp[1];
+         pathSegments = new String[splits.length];
+         predicates = new XenPredicate[splits.length];
+
+         for (int i = 0; i < splits.length; i++) {
+            String s = splits[i];
+
+            int predIndex = s.indexOf('[');
+            if (predIndex < 0) {
+               pathSegments[i] = s;
+               predicates[i] = XenPredicate.ALL;
+            } else {
+               pathSegments[i] = s.substring(0, predIndex);
+               predicates[i] = calcPredicate(s, oneBasedIndices);
+            }
+         }
+      }
    }
 
 
@@ -123,8 +144,7 @@ public class Xpath {
          } else {
             List<Xen> childList = xen.children(segment);
             xen = null;  // never add
-            if (predicates[i] != null)
-               childList = applyPredicate(childList, predicates[i]);
+            childList = predicates[i].apply(childList);
 
             if (i == pathSegments.length-1) {
                matches.addAll(childList);
@@ -157,38 +177,6 @@ public class Xpath {
    }
 
 
-   public List<Xen> applyPredicate(List<Xen> inList, String predicate) {
-      List<Xen> outList = new ArrayList<Xen>();
-
-      // support ints and @
-      if (predicate.startsWith(ATTRIBUTE)) {
-         String[] split = predicate.substring(1).split("="); // keep the @
-         String name = split[0];
-         String requiredValue = null;
-         if (split.length > 1)
-            requiredValue = split[1].substring(1, split[1].length() - 1);
-
-         for (Xen in : inList) {
-            String actualValue = in.attribute(name);  // never null
-            if ( actualValue.equals(requiredValue) ||
-                ((requiredValue == null) && (actualValue.length() > 0)) )
-               outList.add(in);
-         }
-      }
-      else {
-         predicate = predicate.replace("last()", "");
-         if (predicate.length() == 0)
-            predicate = "0";
-         int idx = Integer.parseInt(predicate) - this.indexOrigin;  //  W3C XPath uses 1-based indexing
-         Xen one = (idx >= 0) ? inList.get(idx) : inList.get(inList.size() + idx);
-         outList.add(one);
-      }
-
-      return outList;
-   }
-
-
-
    /**
     * Combines path array, which may include "/" or ".", into a single String
     * @param xpaths
@@ -215,7 +203,7 @@ public class Xpath {
           (resolved.charAt(0) == '.') &&
           Character.isLetter(resolved.charAt(1))) {
 
-         indexOrigin = 0;
+         oneBasedIndices = false;
          resolved = resolved.substring(1);  // clear leading .
          resolved = resolved.replaceAll("\\.", "/"); // convert to XPath syntax
       }
@@ -240,33 +228,40 @@ public class Xpath {
    }
 
 
-   protected String[][] computePathsAndPredicates(String resolvedPath) {
-      String[] paths = NO_PATH;
-      String[] predicates = NO_PATH;
+   protected XenPredicate calcPredicate(String s, boolean oneBasedInput) {
+      s = getBetween(s, '[', ']');
+      if (s.length() == 0)  // shouldn't happen but be paranoid
+         return XenPredicate.ALL;
 
-      if (resolvedPath.length() > 0) {
-         String cleanPath = resolvedPath.replaceAll("//", "/+");  // // is a pain... (and currently unsupported)
-         String[] splits = cleanPath.split("/");
-         if ("".equals(splits[0]))
-            splits[0] = ROOT;
-
-         paths = new String[splits.length];
-         predicates = new String[splits.length];
-         for (int i = 0; i < splits.length; i++) {
-            String s = splits[i];
-
-            int predIndex = s.indexOf('[');
-            if (predIndex < 0) {
-               paths[i] = s;
-            } else {
-               paths[i] = s.substring(0, predIndex);
-               predicates[i] = s.substring(predIndex + 1, s.length() - 1); // remove []
-            }
+      if (s.startsWith(ATTRIBUTE))  {
+         s = s.substring(1);
+         int equalsIdx = s.indexOf('=');
+         if (equalsIdx < 0) {
+            return new XenPredicate.AttributeExists(s);
+         }
+         else {
+            String name = s.substring(0,equalsIdx );
+            String value = getBetween(s, '\'', '\'');
+            return new XenPredicate.AttributeMatches(name, value);
          }
       }
+      else {
+         s.replace("last()", "");
+         if (s.length() == 0) // predicate was "last()"
+            return XenPredicate.LAST;
+         int idx = Integer.parseInt(s);
+         if (oneBasedInput && (idx > 0))
+            idx--;
+         return new XenPredicate.Index(idx);
+      }
 
-      return new String[][]{paths, predicates};
    }
 
+
+   static String getBetween(String in, char start, char end) {
+      int i1 = in.indexOf(start);
+      int i2 = (i1 >= 0) ? in.indexOf(end, i1+1) : -1;
+      return (i2 > i1) ? in.substring(i1+1, i2) : "";
+   }
 
 }

@@ -99,7 +99,10 @@ public class XenTest extends TestCase {
       }
 
       assertEquals("address1", customer.getText("email[1]", "@addr"));
-      assertEquals("address2", customer.getText("email[0]", "@addr"));
+      assertEquals("address2", customer.getText("email[2]", "@addr"));
+      assertEquals("address1", customer.getText(".email[0]", "@addr"));
+      assertEquals("address2", customer.getText(".email[1]", "@addr"));
+
       assertEquals("[address1, address2]", customer.allText("email", "@addr").toString());
       assertEquals("<id>CUSTOMER_03<\\id>", customer.get("id").toString());
       assertEquals("bar", root.getText("m:customer", "@foo"));
