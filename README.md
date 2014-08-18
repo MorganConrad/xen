@@ -74,6 +74,7 @@ This class implements an "XPath-like" search syntax.
  1. [N] and [last()-N] work as per W3C, with __1 based indexing__.  _Note:_ the `last()` is optional.  e.g. [-2] is same as [last()-2]
  2. [@a]  selects all elements having an attribute named a
  3. [@a='val'] selects all elements having an attribute a with value val.
+ 4. [.='val'] or [text()='val'] selects elements whose text matches val.
 
 ####If the path starts with a dot and a letter, it will be treated as a "Groovy Dot Style" path to access elements.
 You lose a few options ("/", ".", and ".." are not supported) but the notation matches what you'd type in Groovy, including __0 based indexing__.
