@@ -170,7 +170,7 @@ public class Xen {
 
 
    /**
-    * Get text from this Xen.  Text is always "normalized" (combined into one single String)
+    * Get text from this Xen, and <em>not it's children</em>.  Text is always "normalized" (combined into one single String)
     * A loose replacement for org.w3c.dom.Node.getTextContent() and groovy.util.Node.text(), but DOES NOT INCLUDE getText from children
     *
     * @return never-null, may be empty
@@ -179,27 +179,32 @@ public class Xen {
 
 
    /**
-    * Get text from this Xen, plus, possibly, all children.  Breadth first.
+    * Get text from this Xen, plus all children.  Breadth first.  IMO, pretty worthless...
     * So similar to org.w3c.dom.getTextContent and groovy.util.Node.text().
-    * @param includeChildren whether to recursively include children (breadth first)
+    * @param delimiter  use "" to mimic org.w3c.dom.getTextContent
     * @return never null
     */
-   public String text(boolean includeChildren) {
-      if (!includeChildren)
-         return this.text;
-
+   public String getTextContent(String delimiter) {
       StringBuilder sb = new StringBuilder();
       sb.append(text);
-      for (Xen xen : this.breadthFirst())
-         sb.append(xen.text());
+      for (Xen xen : this.breadthFirst()) {
+         sb.append(delimiter).append(xen.text);
+      }
 
       return sb.toString();
    }
 
-
+   /**
+    * Get text from this Xen, plus all children.  Breadth first.  IMO, pretty worthless...
+    * So similar to org.w3c.dom.getTextContent and groovy.util.Node.text().
+    * @return  never null
+    */
+   public String getTextContent() {
+      return getTextContent("");
+   }
 
    /**
-    * Get text from another (single) Xen along an Xpath
+    * Get text from another (single) Xen (and <em>not its children</em>) along an Xpath
     *
     * @param path XPath-like
     * @return null if that Xen does not exist

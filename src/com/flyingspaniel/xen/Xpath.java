@@ -27,7 +27,8 @@ import java.util.List;
  *      <li>If N == 0, selects the last child.      So book[0] is equivalent to W3C's book[last()]
  *      <li>if N < 0, selects the last+Nth child.  So book[-2] is equivalent to W3C's book[last()-2]
  *    </ul>
- *    <li>[@a] or [@a='val'] work as per W3C.
+ *    <li>[@a] or [@a='val'] work as per W3C.   (note - unlike W3C, the single quotes are optional)
+ *    <li>[text()='val'] or [.='val'] work as per W3C, matching if the element's text</li>
  *    <ul>
  *       <li>ename[@aname] selects all elements named ename with an attribute named aname
  *       <li>ename[@aname='avalue'] selects all elements named ename with an attribute named aname equal to avalue
@@ -43,7 +44,7 @@ import java.util.List;
  * <h4>However, if the path starts with a . followed by a letter, it is treated as a Groovy-style path</h4>
  * Note that .x is not a legal XPath syntax...
  * <pre>
- *    .            is now the delimiter  (currently, '/' will also treated as a delimiter)
+ *    .            is now the delimiter  (exception: [.='value'] can still be used as a predicate to match text)
  *    / . and ..   are not allowed in navigation.
  *    indices are now 0-based.  You can still work backwards, but use -1 for the last.
  * </pre>
@@ -197,6 +198,7 @@ public class Xpath {
       }
 
       String resolved = sb.toString();
+      resolved = resolved.replace("[.=", "[text()=");   // remove one possible point of dot vs. slash confustion
 
       // test if Groovy dot notation instead of XPath slash notation
       if ((resolved.length() > 1) &&
@@ -205,9 +207,11 @@ public class Xpath {
 
          oneBasedIndices = false;
          resolved = resolved.substring(1);  // clear leading .
-         resolved = resolved.replaceAll("\\.", "/"); // convert to XPath syntax
+         resolved = resolved.replace(".", "/"); // convert to XPath syntax, all dots -> slashes
       }
 
+      // one shortcut
+      resolved = resolved.replace("[last()", "[");
       return resolved;
    }
 
@@ -245,8 +249,11 @@ public class Xpath {
             return new XenPredicate.AttributeMatches(name, value);
          }
       }
+      else if (s.startsWith("text()=")) {
+         String value = getBetween(s.substring(7), '\'', '\'');
+         return new XenPredicate.TextMatches(value);
+      }
       else {
-         s.replace("last()", "");
          if (s.length() == 0) // predicate was "last()"
             return XenPredicate.LAST;
          int idx = Integer.parseInt(s);

@@ -99,5 +99,28 @@ public interface XenPredicate {
    }
 
 
+   /**
+    * True if the Text matches value.  Currently just supports equals(), no regex...
+    */
+   public static class TextMatches implements XenPredicate {
+
+      final String value;
+
+      public TextMatches(String value) {
+         this.value = value;
+      }
+
+      public List<Xen> apply(List<Xen> inList) {
+         List<Xen> outList = new ArrayList<Xen>();
+         for (Xen in : inList) {
+            if (in.text.equals(value))
+               outList.add(in);
+         }
+         return outList;
+      }
+
+   }
+
+
 
 }

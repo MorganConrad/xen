@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- modified from   http://www.w3schools.com/xml/xml_xpath.asp
+     added some (fake) namespace stuff and a book in spanish -->
+
+<bookstore xmlns:m="foo">
+
+    <m:book category="COOKING">
+        <title lang="en">Everyday Italian</title>
+        <author>Giada De Laurentiis</author>
+        <year>2005</year>
+        <price>30.00</price>
+    </m:book>
+
+    <book category="CHILDREN">
+        <title lang="en">Harry Potter</title>
+        <author>J K. Rowling</author>
+        <year>2005</year>
+        <price>29.99</price>
+    </book>
+
+    <book category="MYSTERY">
+        <title lang="es" someattr="123">La tabla de Flandes</title>
+        <author>Arturo Pérez-Reverte</author>
+        <year>1990</year>
+        <price>29.99</price>
+    </book>
+
+
+    <book category="WEB">
+        <title lang="en">XQuery Kick Start</title>
+        <author>James McGovern</author>
+        <author>Per Bothner</author>
+        <author>Kurt Cagle</author>
+        <author>James Linn</author>
+        <author>Vaidyanathan Nagarajan</author>
+        <year>2003</year>
+        <price>49.99</price>
+    </book>
+
+    <book category="WEB">
+        <title lang="en">Learning XML</title>
+        <author>Erik T. Ray</author>
+        <year>2003</year>
+        <price>39.95</price>
+    </book>
+
+    <id>Acme Book Emporium</id>
+    <m:branch>Main Street</m:branch>
+
+</bookstore>
