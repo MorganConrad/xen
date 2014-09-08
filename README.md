@@ -70,10 +70,12 @@ This class implements an "XPath-like" search syntax.
  6. @x  select attributes named x (only allowed at the end)
  7. // is _not supported_.  All children must be direct descendants.
 
- ###Predicates supported (all as-per w3c with one addition)
+ ###Predicates supported (most are as-per W3C)
  1. [N] and [last()-N] work as per W3C, with __1 based indexing__.  _Note:_ the `last()` is optional.  e.g. [-2] is same as [last()-2]
  2. [@a]  selects all elements having an attribute named a
- 3. [@a='val'] selects all elements having an attribute a with value val.
+ 3. [@a='val'] selects all elements having an attribute a with value val.  _Note:_ unlike W3C the single quotes are optional but highly recommended
+ 4. [.='val'] or [text()='val'] selects elements whose text equals val.
+ 5. Use ~ instead of = for regular expressions (non-W3C standard)  e.g.  [.~'.*end'] selects all elements whose text ends with "end"
 
 ####If the path starts with a dot and a letter, it will be treated as a "Groovy Dot Style" path to access elements.
 You lose a few options ("/", ".", and ".." are not supported) but the notation matches what you'd type in Groovy, including __0 based indexing__.

@@ -112,6 +112,10 @@ public class XenTest extends TestCase {
       assertEquals("/book/title", title.absolutePath());
 
       assertNull(root.get("not", "there"));
+
+      // test wildcard.  Two books have capital X in title
+      List<Xen> XMLbooks = root.all(".book.title[.~.*X.*]");
+      assertEquals(2, XMLbooks.size());
    }
 
    private void testGroovySearch(Xen root) {

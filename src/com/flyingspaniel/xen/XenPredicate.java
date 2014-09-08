@@ -2,6 +2,7 @@ package com.flyingspaniel.xen;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Support for XPath-like predicates
@@ -74,23 +75,43 @@ public interface XenPredicate {
    }
 
 
+
+   static abstract class Matches implements XenPredicate {
+      final String value;
+      final Pattern pattern;
+
+      Matches(String value, boolean isRegex) {
+         this.value = value;
+         if (isRegex) { // regex
+            pattern = Pattern.compile(value);
+         }
+         else {
+            pattern = null;
+         }
+      }
+
+      boolean isMatch(String input) {
+         return (pattern != null) ? pattern.matcher(input).matches() : value.equals(input);
+      }
+   }
+
+
    /**
     * True if the Attribute matches value.  Currently just supports equals(), no regex...
     */
-   public static class AttributeMatches implements XenPredicate {
+   public static class AttributeMatches extends Matches {
 
       final String name;
-      final String value;
 
-      public AttributeMatches(String name, String value) {
+      public AttributeMatches(String name, String value, boolean isRegex) {
+         super(value, isRegex);
          this.name = name;
-         this.value = value;
       }
 
       public List<Xen> apply(List<Xen> inList) {
          List<Xen> outList = new ArrayList<Xen>();
          for (Xen in : inList) {
-            if (in.attribute(name).equals(value))
+            if (isMatch(in.attribute(name)))
                outList.add(in);
          }
          return outList;
@@ -102,18 +123,16 @@ public interface XenPredicate {
    /**
     * True if the Text matches value.  Currently just supports equals(), no regex...
     */
-   public static class TextMatches implements XenPredicate {
+   public static class TextMatches extends Matches {
 
-      final String value;
-
-      public TextMatches(String value) {
-         this.value = value;
+      public TextMatches(String value, boolean isRegex) {
+         super(value, isRegex);
       }
 
       public List<Xen> apply(List<Xen> inList) {
          List<Xen> outList = new ArrayList<Xen>();
          for (Xen in : inList) {
-            if (in.text.equals(value))
+            if (isMatch(in.text))
                outList.add(in);
          }
          return outList;

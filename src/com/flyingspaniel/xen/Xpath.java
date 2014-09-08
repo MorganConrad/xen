@@ -29,9 +29,11 @@ import java.util.List;
  *    </ul>
  *    <li>[@a] or [@a='val'] work as per W3C.   (note - unlike W3C, the single quotes are optional)
  *    <li>[text()='val'] or [.='val'] work as per W3C, matching if the element's text</li>
+ *    <li>Use ~ instead of = to use a regular expression, e.g. [text()~'foo.*']  (This is non-standard W3C.) </li>
  *    <ul>
  *       <li>ename[@aname] selects all elements named ename with an attribute named aname
- *       <li>ename[@aname='avalue'] selects all elements named ename with an attribute named aname equal to avalue
+ *       <li>ename[@aname='avalue'] selects all elements named ename with an attribute named aname that equals avalue
+ *       <li>ename[@aname~'.*\\d'] selects all elements named ename with an attribute named aname that ends with a digit
  *    </ul>
  *     </ul>
  *  <b>Note:</b> Does NOT support //  i.e., all nodes must be <b>direct</b> descendants
@@ -198,7 +200,7 @@ public class Xpath {
       }
 
       String resolved = sb.toString();
-      resolved = resolved.replace("[.=", "[text()=");   // remove one possible point of dot vs. slash confustion
+     // resolved = resolved.replace("[.", "[text()");   // remove one possible point of dot vs. slash confustion
 
       // test if Groovy dot notation instead of XPath slash notation
       if ((resolved.length() > 1) &&
@@ -207,7 +209,20 @@ public class Xpath {
 
          oneBasedIndices = false;
          resolved = resolved.substring(1);  // clear leading .
-         resolved = resolved.replace(".", "/"); // convert to XPath syntax, all dots -> slashes
+
+         // convert all .s that are NOT inside a predicate ([ ... ]) to a slash
+         char[] chars = resolved.toCharArray();
+         boolean insidePredicate = false;
+         for (int i=0; i<chars.length; i++)  {
+            char c = chars[i];
+            if (c == '[')
+               insidePredicate = true;
+            else if (c == ']')
+               insidePredicate = false;  // TODO fails for escaped...
+            else if ((c == '.') && !insidePredicate)
+               chars[i] = '/';
+         }
+         resolved = String.valueOf(chars);
       }
 
       // one shortcut
@@ -234,28 +249,33 @@ public class Xpath {
 
    protected XenPredicate calcPredicate(String s, boolean oneBasedInput) {
       s = getBetween(s, '[', ']');
-      if (s.length() == 0)  // shouldn't happen but be paranoid
-         return XenPredicate.ALL;
+      if (s.length() == 0)  // predicate was "last()" and got removed
+         return XenPredicate.LAST;
+
+      boolean isRegex = false;
+      int equalsIdx = s.indexOf('=');
+      if (equalsIdx < 0)  {
+         equalsIdx = s.indexOf('~');
+         isRegex = true;
+      }
 
       if (s.startsWith(ATTRIBUTE))  {
          s = s.substring(1);
-         int equalsIdx = s.indexOf('=');
          if (equalsIdx < 0) {
             return new XenPredicate.AttributeExists(s);
          }
          else {
-            String name = s.substring(0,equalsIdx );
-            String value = getBetween(s, '\'', '\'');
-            return new XenPredicate.AttributeMatches(name, value);
+            String name = s.substring(0, equalsIdx-1);
+            // -1 since we trimmed off the first '@' char
+            String value = getBetween(s.substring(equalsIdx+1-1), '\'', '\'');
+            return new XenPredicate.AttributeMatches(name, value, isRegex);
          }
       }
-      else if (s.startsWith("text()=")) {
-         String value = getBetween(s.substring(7), '\'', '\'');
-         return new XenPredicate.TextMatches(value);
+      else if (s.charAt(0) == '.' || s.startsWith("text()")) {
+         String value = getBetween(s.substring(equalsIdx+1), '\'', '\'');
+         return new XenPredicate.TextMatches(value, isRegex);
       }
       else {
-         if (s.length() == 0) // predicate was "last()"
-            return XenPredicate.LAST;
          int idx = Integer.parseInt(s);
          if (oneBasedInput && (idx > 0))
             idx--;
@@ -267,8 +287,8 @@ public class Xpath {
 
    static String getBetween(String in, char start, char end) {
       int i1 = in.indexOf(start);
-      int i2 = (i1 >= 0) ? in.indexOf(end, i1+1) : -1;
-      return (i2 > i1) ? in.substring(i1+1, i2) : "";
+      int i2 = (i1 >= 0) ? in.lastIndexOf(end) : -1;
+      return (i2 > i1) ? in.substring(i1+1, i2) : in;
    }
 
 }
