@@ -18,10 +18,10 @@ It's interesting that my design came out pretty close to Groovy's.  (I then move
 
 [JavaDocs are here](http://morganconrad.github.io/xen/javadocs/)
 
-This package is very new (v0.0.3), and may well contain bugs and design flaws.  The API is still subject to change.
+This package is fairly new (v0.1.0), and may well contain bugs and design flaws.  The API is still subject to change.
 
 ####Demo 
-This Example Mimics an Example from the book _Making Java Groovy_.
+This Example Mimics an Example from the book _Making Java Groovy_.  [See GeocoderDemo.java] (https://github.com/MorganConrad/xen/blob/master/test/com/flyingspaniel/xen/GeocoderDemo.java) for complete code.
 
     String url = BASE + URLEncoder.encode("24 Willy Mays Plaza San Francisco CA");
     Xen response = new XenParser().parse(url);
