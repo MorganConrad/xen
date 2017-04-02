@@ -7,7 +7,7 @@ Need to read or modify a few values from XML?  Xen makes that easy and painless.
  * a similar XPath-like syntax using slashes as separators (see longitude code below)
  * direct programmatic navigation with methods like children(), parent(), etc...
 
-####Demo
+#### Demo
 This Example Mimics an Example from the book _Making Java Groovy_.  [See GeocoderDemo.java] (https://github.com/MorganConrad/xen/blob/master/test/com/flyingspaniel/xen/GeocoderDemo.java) for complete code.
 
     // Get the latitude and longitude of the San Francisco Giant's stadium.
@@ -20,12 +20,12 @@ This Example Mimics an Example from the book _Making Java Groovy_.  [See Geocode
     double longitude = response.one("result[1]/geometry/location/lng").toDouble();
 
 
-####Javadocs
+#### Javadocs
 [JavaDocs are here](http://morganconrad.github.io/xen/javadocs/)
 
 
 
-###Navigation API
+### Navigation API
 
  1. A Xen object supports basic navigation via `children(String), parent(), and getRootElement().`
  2. It also supports a convenience API for "XPath-like" search: `get(), one(), and all(), getText(), oneText(), allText().`
@@ -35,11 +35,11 @@ This Example Mimics an Example from the book _Making Java Groovy_.  [See Geocode
     - all...() returns a list of matches, possibly empty
  3. You can also explicitly create an Xpath to do searching from an Xen.   Details below.
 
-###XPath
+### XPath
 
 This class implements an "XPath-like" search syntax.
 
-####All Selectors except "//" are supported
+#### All Selectors except "//" are supported
  1. /   if at the start, move to the root Xen, else used as a delimiter
  2. .   move to current Xen.  (not very useful since there is an implied "." at the start of any path)
  3. ..  move up to parent Xen.
@@ -48,14 +48,14 @@ This class implements an "XPath-like" search syntax.
  6. @x  select attributes named x (only allowed at the end)
  7. // is _not supported_.  All children must be direct descendants.
 
-###Predicates supported (most are as-per W3C)
+### Predicates supported (most are as-per W3C)
  1. [N] and [last()-N] work as per W3C, with __1 based indexing__.  _Note:_ the `last()` is optional.  e.g. [-2] is same as [last()-2]
  2. [@a]  selects all elements having an attribute named a
  3. [@a='val'] selects all elements having an attribute a with value val.  _Note:_ unlike W3C the single quotes are optional but highly recommended
  4. [.='val'] or [text()='val'] selects elements whose text equals val.
  5. Use ~ instead of = for regular expressions (non-W3C standard)  e.g.  [.~'.*end'] selects all elements whose text ends with "end"
 
-####If the path starts with a dot and a letter, it will be treated as a "Groovy Dot Style" path to access elements.
+#### If the path starts with a dot and a letter, it will be treated as a "Groovy Dot Style" path to access elements.
 You lose a few options ("/", ".", and ".." are not supported) but the notation matches what you'd type in Groovy, including __0 based indexing__.
 
 #### How does this compare to Groovy?
@@ -109,7 +109,7 @@ Converts the Xen (usually the root but not necessarily) into a org.w3c.dom.Docum
     Converter.ToDocument converter = new Converter.ToDocument(someDocumentBuilder.newDocument());   // or new CoreDocumentImpl()
     doc = converter.convert(xelent);
 
-####Converter.ToXML
+#### Converter.ToXML
 
 A reasonable conversion to XML text.  (If you want something fancier, use ToDocumentConverter and apply your
 preferred Transformer or whatever to the Document.)  Usage:
@@ -120,7 +120,7 @@ preferred Transformer or whatever to the Document.)  Usage:
 _Note:_   Xen.toString() uses this with `Converter.ToXML.DEFAULT`, where indent and indentPerLevel both two spaces.
 
 
-#Philosophy
+# Philosophy
 Xen was inspired by XPath and Groovy's XML Handling, e.g. [XMLParser](http://groovy.codehaus.org/api/groovy/util/XmlParser.html).
 
 Let's face it, the standard Java `org.w3c.dom.*` XML interfaces and implementations are huge, way overly complex for most users,
@@ -138,7 +138,7 @@ It's interesting that my design came out pretty close to Groovy's.  (I then move
 
 This package is fairly new (v0.1.0), and may well contain bugs and design flaws.  The API is still subject to change.
 
-####General Design - similar to a [Groovy Node](http://groovy.codehaus.org/api/groovy/util/Node.html).
+#### General Design - similar to a [Groovy Node](http://groovy.codehaus.org/api/groovy/util/Node.html).
 
  1. All text associated with a node is grouped into a single String.  There are no org.w3c.dom.Text Nodes.
  2. Attributes are kept in a simple `Map<String,String>` under their element.  So there are no org.w3c.dom.Attr nodes.
